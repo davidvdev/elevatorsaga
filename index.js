@@ -5,18 +5,33 @@
         elevators.forEach(elevator => {
             
             elevator.on('floor_button_pressed', (floorNum) => {
-                elevator.goToFloor(floorNum)
-                /* if(!elevator.destinationQueue.includes(floorNum)) {
+                if(!elevator.destinationQueue.includes(floorNum)) {
                     elevator.destinationQueue.push(floorNum)
-                }*/
+                    elevator.checkDestinationQueue()
+                }
+
+                let nextFloor = elevator.destinationQueue[0]
+
+                elevator.goToFloor(nextFloor)
             })
             
             elevator.on('passing_floor', (floorNum, direction) => {
-                if(floors[floorNum].serviceRequest && floors[floorNum].serviceDirection === direction ) elevator.goToFloor(floorNum, true) 
+                if(elevator.loadFactor() <= 0.7
+                   && floors[floorNum].serviceRequest 
+                   && floors[floorNum].serviceDirection === direction 
+                  ) elevator.goToFloor(floorNum, true) 
             })
             
             elevator.on('stopped_at_floor', (floorNum) => {
                 floors[floorNum].serviceRequest = false
+                
+                // find closest next floor en route
+                if( elevator.destinationDirection() === 'up'){
+                    elevator.destinationQueue.sort((a,b) => a-b)
+                }else{
+                    elevator.destinationQueue.sort((a,b) => b-a)
+                }
+                elevator.checkDestinationQueue()
             })
 
             elevator.on("idle", () => {
@@ -24,6 +39,7 @@
                 let requests = floors.filter(floor => floor.serviceRequest === true)
                 if(requests.length > 0){
                     elevator.goToFloor(requests[0].floorNum())
+                    floors[requests[0].floorNum()].serviceRequest = false
                 } else {
                     elevator.goToFloor(0)
                 }
